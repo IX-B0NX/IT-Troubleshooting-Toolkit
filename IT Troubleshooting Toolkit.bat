@@ -5,7 +5,7 @@ set "VERSION=1.2.0"
 :: -----------------------
 
 title IT Troubleshooting Toolkit v%VERSION%
-mode con: cols=95 lines=35
+mode con: cols=95 lines=38
 color 0B
 
 :: --- ADMIN CHECK ---
@@ -27,11 +27,9 @@ cls
 echo ==========================================================================================
 echo   IT TOOLKIT v%VERSION%  ^|  Host: %computername%  ^|  User: %username%
 echo ==========================================================================================
-:: Scrape active IPv4
+set "IP=Not Found"
 for /f "tokens=2 delims=:" %%a in ('ipconfig ^| findstr "IPv4" ^| findstr "192. 10. 172."') do set "IP=%%a"
-:: Get Last Boot Time
 for /f "tokens=1-6 delims= " %%a in ('powershell -command "Get-CimInstance Win32_OperatingSystem | Select-Object -ExpandProperty LastBootUpTime"') do set "BOOT=%%a"
-:: Identify Active Network Adapter
 for /f "tokens=*" %%i in ('powershell -command "Get-NetAdapter | Where-Object Status -eq 'Up' | Select-Object -ExpandProperty Name"') do set "ADAPTER=%%i"
 
 echo   IP: %IP:~1% [%ADAPTER%]  ^|  Booted: %BOOT%  ^|  Date: %date%
@@ -50,10 +48,10 @@ echo    7. Continuous Ping              15. Locate BSOD MiniDumps
 echo.
 echo   [SYSTEM]
 echo    16. Generate System Report      17. Disk Cleanup
-echo    18. EXIT
+echo    18. TOOLKIT MANUAL              19. EXIT
 echo.
 echo ==========================================================================================
-set /p choice="Enter Selection (1-18): "
+set /p choice="Enter Selection (1-19): "
 
 if "%choice%"=="1" goto network
 if "%choice%"=="2" goto repair
@@ -71,7 +69,33 @@ if "%choice%"=="14" goto activation
 if "%choice%"=="15" goto minidump
 if "%choice%"=="16" goto report
 if "%choice%"=="17" goto cleanup
-if "%choice%"=="18" goto end
+if "%choice%"=="18" goto manual
+if "%choice%"=="19" goto end
+goto menu
+
+:manual
+cls
+echo ==========================================================================================
+echo                                TOOLKIT MANUAL ^| v%VERSION%
+echo ==========================================================================================
+echo 1. Network Refresher: Re-establishes network stack (Release/Renew/DNS Flush/Winsock Reset).
+echo 2. System Repair: Deep scan for corrupted OS files using SFC and DISM image repair.
+echo 3. Hardware/Battery: Pulls Serial/Model and generates an HTML Battery Report to Desktop.
+echo 4. Drive Health: Queries physical disks for S.M.A.R.T. health status (OK/Warning/Failing).
+echo 5. Explorer Shell: Restarts the Taskbar and Desktop UI if frozen or hanging.
+echo 6. Wi-Fi Passwords: Lists saved profiles and reveals clear-text keys for selected networks.
+echo 7. Continuous Ping: Monitors connection stability to a target URL or IP address.
+echo 9. Windows Update: Stops update services and wipes the SoftwareDistribution cache folder.
+echo 10. Print Spooler: Restarts the print service and clears the local document queue.
+echo 11. Remote Desktop: Enables RDP via Registry and automatically opens Firewall ports.
+echo 12. Update Apps: Uses Windows Package Manager (Winget) to update all 3rd party software.
+echo 13. BIOS/Firmware: Audits the motherboard manufacturer, version, and release date.
+echo 14. Activation: Verifies if the Windows OS is properly licensed and activated.
+echo 15. BSOD MiniDumps: Searches the system directory for recent Blue Screen crash logs.
+echo 16. System Report: Exports a list of hardware specs and running tasks to a Desktop .txt.
+echo 17. Disk Cleanup: Triggers automated system cleanup of logs and temp files.
+echo ==========================================================================================
+pause
 goto menu
 
 :repair
@@ -83,7 +107,6 @@ echo [Action] Running System Health Checks...
 sfc /scannow
 Dism /Online /Cleanup-Image /RestoreHealth
 echo ^G
-echo [COMPLETE] System files verified and repaired.
 pause
 goto menu
 
@@ -92,7 +115,6 @@ cls
 echo [Action] Searching for app updates via Winget...
 winget upgrade --all
 echo ^G
-echo [COMPLETE] All eligible apps updated.
 pause
 goto menu
 
@@ -107,16 +129,14 @@ goto menu
 
 :hardware
 cls
-echo [Action] Hardware Discovery...
 powershell -command "Write-Host 'Serial: ' (Get-CimInstance Win32_Bios).SerialNumber -ForegroundColor Cyan; Write-Host 'Model: ' (Get-CimInstance Win32_ComputerSystem).Model -ForegroundColor Cyan"
 powercfg /batteryreport /output "%userprofile%\Desktop\Battery_Report.html" >nul
-echo [OK] Hardware info pulled; Battery report on Desktop.
+echo [OK] Info pulled; Battery report on Desktop.
 pause
 goto menu
 
 :wifi
 cls
-echo [Action] Saved Profiles:
 netsh wlan show profiles | findstr "All User Profile"
 echo.
 set /p profile="Enter Exact Profile Name: "
@@ -181,7 +201,7 @@ goto menu
 cls
 reg add "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Terminal Server" /v fDenyTSConnections /t REG_DWORD /d 0 /f >nul
 netsh advfirewall firewall set rule group="remote desktop" new enable=Yes >nul
-echo [OK] RDP Enabled and Firewall open.
+echo [OK] RDP Enabled.
 pause
 goto menu
 
@@ -198,7 +218,6 @@ goto menu
 :pingtest
 cls
 set /p target="Target: "
-echo Press Ctrl+C to stop.
 :loop
 echo [%time%] Pinging %target%...
 ping -n 1 %target% | findstr "Reply" || echo [!] TIMEOUT
