@@ -1,7 +1,7 @@
 @echo off
 setlocal enabledelayedexpansion
 :: --- VERSION CONTROL ---
-set "VERSION=1.1.1"
+set "VERSION=1.1.2"
 :: -----------------------
 
 title IT Troubleshooting Toolkit v%VERSION%
@@ -21,14 +21,14 @@ echo ======================================================
 echo          IT TROUBLESHOOTING TOOLKIT v%VERSION%
 echo ======================================================
 echo  [DIAGNOSTICS]
-echo   1. Network Refresher (DNS/IP/Winsock Reset)
-echo   2. System Repair (SFC and DISM)
-echo   3. Battery Health Report (HTML to Desktop)
-echo   4. Hardware Info (Serial Number and Model)
+echo   1. Network Refresher
+echo   2. System Repair (SFC/DISM)
+echo   3. Battery Health Report
+echo   4. Hardware Info (Serial/Model)
 echo.
 echo  [UTILITIES]
-echo   5. Generate System Report (Hardware/Tasks)
-echo   6. Reset Print Spooler (Fix Stuck Printing)
+echo   5. Generate System Report
+echo   6. Reset Print Spooler
 echo   7. Continuous Ping Monitor
 echo.
 echo  [SYSTEM]
@@ -49,10 +49,10 @@ goto menu
 :network
 cls
 echo [Action] Resetting Network Stack...
-ipconfig /release >nul
-ipconfig /renew >nul
-ipconfig /flushdns >nul
-netsh winsock reset >nul
+ipconfig /release >nul 2>&1
+ipconfig /renew >nul 2>&1
+ipconfig /flushdns >nul 2>&1
+netsh winsock reset >nul 2>&1
 echo Done! Network settings refreshed.
 pause
 goto menu
@@ -62,6 +62,7 @@ cls
 echo [Action] Running System Health Checks...
 echo Phase 1: SFC Scan...
 sfc /scannow
+echo.
 echo Phase 2: DISM Repair...
 Dism /Online /Cleanup-Image /RestoreHealth
 echo System repair complete.
@@ -81,9 +82,10 @@ cls
 echo [Action] Retrieving Hardware Identifiers...
 echo ------------------------------------------
 echo Serial Number:
-wmic bios get serialnumber
+powershell -command "Get-CimInstance Win32_Bios | Select-Object -ExpandProperty SerialNumber"
+echo.
 echo Model Name:
-wmic csproduct get name
+powershell -command "Get-CimInstance Win32_ComputerSystem | Select-Object -ExpandProperty Model"
 echo ------------------------------------------
 pause
 goto menu
@@ -106,7 +108,7 @@ goto menu
 :spooler
 cls
 echo [Action] Resetting Print Spooler...
-net stop spooler
+net stop spooler /y
 echo Clearing old print jobs...
 del /Q /F /S "%systemroot%\System32\Spool\Printers\*.*"
 net start spooler
